@@ -1,0 +1,76 @@
+# Tiếng Việt locale cho Naruto Mod
+# Textdomain: naruto
+
+# Vũ khí
+Ninja Kunai=Phi Tiêu Kunai
+Throwing Kunai=Ném Phi Tiêu Kunai
+Shuriken=Phi Tiêu Shuriken
+Katana=Kiếm Katana
+Kusanagi Sword=Kiếm Kusanagi
+Fire Scroll=Cuộn Thuật Hỏa
+Wind Scroll=Cuộn Thuật Phong
+Not enough Chakra!=Không đủ Chakra!
+
+# Jutsu
+Jutsu: Rasengan=Thuật: Rasengan 🍥
+Jutsu: Fireball=Hỏa Độn: Hào Cầu Thuật 🔥
+Jutsu: Chidori=Lôi Độn: Chidori ⚡
+Jutsu: Shadow Clone=Thuật Phân Thân 👥
+Jutsu: Wind Blade=Phong Độn: Phong Nhẫn 🌪️
+Jutsu: Water Dragon=Thủy Độn: Thủy Long Đàn 💧
+RASENGAN!=RASENGAN! 🍥
+FIRE STYLE: FIREBALL!=HỎA ĐỘN: HÀO CẦU THUẬT! 🔥
+LIGHTNING: CHIDORI!=LÔI ĐỘN: CHIDORI! ⚡
+SHADOW CLONE JUTSU!=KAGE BUNSHIN NO JUTSU! 👥
+
+# Vật phẩm
+Ichiraku Ramen=Mì Ramen Ichiraku 🍜
+Soldier Pill=Binh Lương Hoàn 💊
+Sake=Rượu Sake 🍶
+Ration Bar=Khẩu Phần Chiến Trường 🍱
+Leaf Headband=Băng Trán Làng Lá 🍃
+Sand Headband=Băng Trán Làng Cát 🏜️
+Hokage Cloak=Áo Khoác Hokage 🔴
+
+# Nhân vật
+Naruto Uzumaki=Naruto Uzumaki
+Sasuke Uchiha=Sasuke Uchiha
+Sakura Haruno=Sakura Haruno
+Kakashi Hatake=Kakashi Hatake
+Choose your ninja=Chọn Ninja của bạn
+
+# Làng
+Leaf Village=Làng Lá
+Sand Village=Làng Cát
+Water Village=Làng Sương Mù
+Cloud Village=Làng Mây
+Stone Village=Làng Đá
+Rogue Ninja=Lãng Khách
+
+# Cấp bậc
+Genin=Genin
+Chunin=Chunin
+Jonin=Jonin
+Anbu=Anbu
+Sannin=Sannin
+Kage=Kage
+Hokage=Hokage
+Kazekage=Kazekage
+
+# Boss
+BOSS APPEARS!=BOSS XUẤT HIỆN!
+BOSS DEFEATED!=BOSS BỊ TIÊU DIỆT!
+You defeated the boss!=Bạn đã đánh bại Boss!
+
+# UI
+Chakra=Chakra
+HP=Máu
+Ninja Info=Thông Tin Ninja
+Choose Character=Chọn Nhân Vật
+Boss Kills=Boss Đã Diệt
+
+# Hệ thống
+Welcome to ShinobiCraft!=Chào mừng đến ShinobiCraft! 🍥
+Tutorial complete=Hướng dẫn hoàn tất!
+Player joined the village=đã gia nhập làng
+Ninja Rank Up!=Tăng cấp bậc Ninja!

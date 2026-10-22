@@ -1,0 +1,172 @@
+name: 🍥 Build ShinobiCraft iOS IPA
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Phiên bản (VD: 1.0.0)'
+        required: false
+        default: '1.0.0'
+
+env:
+  XCODE_VERSION: '15.4'
+  IOS_DEPLOYMENT_TARGET: '14.0'
+
+jobs:
+  # ──────────────────────────────────────────
+  # JOB 1: Build iOS IPA
+  # ──────────────────────────────────────────
+  build-ios:
+    name: 📱 Build iOS IPA (macOS Cloud)
+    runs-on: macos-14          # Apple M1 runner - miễn phí cho public repo
+    timeout-minutes: 90
+
+    steps:
+      # 1. Checkout code
+      - name: 📥 Checkout ShinobiCraft
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 1
+
+      # 2. Setup Xcode
+      - name: 🔧 Setup Xcode ${{ env.XCODE_VERSION }}
+        run: |
+          sudo xcode-select -switch /Applications/Xcode.app
+          xcodebuild -version
+          echo "✅ Xcode OK"
+
+      # 3. Cache Homebrew packages
+      - name: 💾 Cache Homebrew
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/Homebrew
+            /opt/homebrew/Cellar
+          key: brew-macos14-${{ hashFiles('.github/workflows/build-ios.yml') }}
+          restore-keys: brew-macos14-
+
+      # 4. Cài dependencies
+      - name: 📦 Install build tools
+        run: |
+          brew install cmake ninja pkg-config gettext freetype libvorbis libogg \
+                       zlib zstd leveldb spatialindex jsoncpp curl sqlite \
+                       luajit || true
+          echo "✅ Dependencies OK"
+
+      # 5. Build iOS-specific dependencies (cross-compile)
+      - name: 🔗 Setup iOS cross-compile environment
+        run: |
+          export IOS_SDK=$(xcrun --sdk iphoneos --show-sdk-path)
+          export IOS_CC=$(xcrun --sdk iphoneos --find clang)
+          echo "IOS_SDK=$IOS_SDK" >> $GITHUB_ENV
+          echo "IOS_CC=$IOS_CC"   >> $GITHUB_ENV
+          echo "✅ iOS SDK: $IOS_SDK"
+
+      # 6. Build LuaJIT cho ARM64 iOS
+      - name: 🌙 Build LuaJIT for iOS ARM64
+        run: |
+          git clone --depth=1 https://github.com/LuaJIT/LuaJIT.git /tmp/luajit
+          cd /tmp/luajit
+          make -j$(sysctl -n hw.ncpu) \
+            HOST_CC="clang" \
+            CROSS="$(xcrun --sdk iphoneos --find clang) -arch arm64 -isysroot $IOS_SDK -miphoneos-version-min=14.0 " \
+            TARGET_SYS=iOS \
+            TARGET_FLAGS="-arch arm64" \
+            amalg
+          sudo make install PREFIX=/tmp/luajit-ios
+          echo "✅ LuaJIT built"
+
+      # 7. Configure CMake cho iOS
+      - name: ⚙️ CMake configure for iOS
+        run: |
+          mkdir -p build-ios && cd build-ios
+          cmake .. \
+            -G "Xcode" \
+            -DCMAKE_SYSTEM_NAME=iOS \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=${{ env.IOS_DEPLOYMENT_TARGET }} \
+            -DCMAKE_OSX_ARCHITECTURES="arm64" \
+            -DCMAKE_XCODE_ATTRIBUTE_ONLY_ACTIVE_ARCH=NO \
+            -DRUN_IN_PLACE=FALSE \
+            -DENABLE_GETTEXT=OFF \
+            -DENABLE_LEVELDB=OFF \
+            -DENABLE_REDIS=OFF \
+            -DENABLE_SPATIAL=OFF \
+            -DENABLE_SYSTEM_JSONCPP=OFF \
+            -DLUAJIT_INCLUDE_DIR=/tmp/luajit-ios/include/luajit-2.1 \
+            -DLUAJIT_LIBRARY=/tmp/luajit-ios/lib/libluajit-5.1.a \
+            -DCMAKE_BUILD_TYPE=Release \
+            2>&1 | tail -30
+          echo "✅ CMake configured"
+
+      # 8. Build Archive
+      - name: 🔨 Xcode Archive (unsigned)
+        run: |
+          cd build-ios
+          xcodebuild archive \
+            -project *.xcodeproj \
+            -scheme minetest \
+            -configuration Release \
+            -destination "generic/platform=iOS" \
+            -archivePath "${{ github.workspace }}/ShinobiCraft.xcarchive" \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            -quiet \
+            2>&1 | grep -E "(error:|warning:|Build succeeded|FAILED)"
+
+      # 9. Copy mod Naruto vào bundle
+      - name: 🍥 Copy Naruto mod into app bundle
+        run: |
+          APP_PATH="${{ github.workspace }}/ShinobiCraft.xcarchive/Products/Applications/minetest.app"
+          if [ -d "$APP_PATH" ]; then
+            mkdir -p "$APP_PATH/games/minetest_game/mods"
+            cp -r "${{ github.workspace }}/mods/naruto" \
+                  "$APP_PATH/games/minetest_game/mods/"
+            echo "✅ Naruto mod copied"
+          else
+            echo "⚠️ App bundle not found at $APP_PATH"
+            find "${{ github.workspace }}/ShinobiCraft.xcarchive" -name "*.app" | head -5
+          fi
+
+      # 10. Package thành .ipa
+      - name: 📦 Package .ipa
+        run: |
+          APP_DIR="${{ github.workspace }}/ShinobiCraft.xcarchive/Products/Applications"
+          APP=$(find "$APP_DIR" -name "*.app" | head -1)
+
+          mkdir -p /tmp/ipa_payload/Payload
+          cp -r "$APP" /tmp/ipa_payload/Payload/
+
+          cd /tmp/ipa_payload
+          zip -r "${{ github.workspace }}/ShinobiCraft.ipa" Payload -x "*.DS_Store"
+          echo "✅ IPA created: $(du -sh "${{ github.workspace }}/ShinobiCraft.ipa" | cut -f1)"
+
+      # 11. Upload IPA artifact (download về máy)
+      - name: 📤 Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: ShinobiCraft-iOS-${{ github.event.inputs.version || '1.0.0' }}
+          path: ShinobiCraft.ipa
+          retention-days: 30
+
+      # 12. Build summary
+      - name: 📊 Build Summary
+        if: always()
+        run: |
+          echo "## 🍥 ShinobiCraft Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "| Field | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Version | ${{ github.event.inputs.version || '1.0.0' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| iOS Target | ${{ env.IOS_DEPLOYMENT_TARGET }}+ |" >> $GITHUB_STEP_SUMMARY
+          echo "| Xcode | ${{ env.XCODE_VERSION }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Arch | arm64 |" >> $GITHUB_STEP_SUMMARY
+          if [ -f ShinobiCraft.ipa ]; then
+            SIZE=$(du -sh ShinobiCraft.ipa | cut -f1)
+            echo "| IPA Size | $SIZE |" >> $GITHUB_STEP_SUMMARY
+            echo "| Status | ✅ Success |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Status | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
+          fi

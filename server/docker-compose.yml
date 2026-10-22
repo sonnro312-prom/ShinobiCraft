@@ -1,0 +1,60 @@
+version: '3.8'
+
+# ============================================================
+# docker-compose.yml - Chạy toàn bộ ShinobiCraft stack
+# Cách dùng: docker-compose up -d
+# ============================================================
+
+services:
+
+  # ── Game Server (Luanti/Minetest) ──────────────────────────
+  game-server:
+    image: warr1024/minetestserver:latest
+    container_name: shinobicraft-game
+    ports:
+      - "30000:30000/udp"
+    volumes:
+      - ./worlds:/root/.minetest/worlds
+      - ./mods:/root/.minetest/mods
+      - ./server/minetest.conf:/etc/minetest/minetest.conf
+    environment:
+      - MT_WORLD=ShinobiWorld
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "netstat -uln | grep 30000 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ── Voice Chat Server (LiveKit) ─────────────────────────────
+  livekit:
+    image: livekit/livekit-server:latest
+    container_name: shinobicraft-voice
+    ports:
+      - "7880:7880"           # WebSocket / HTTP API
+      - "7882:7882/udp"       # UDP (WebRTC media)
+      - "50000-50200:50000-50200/udp"  # RTP port range
+    volumes:
+      - ./voice/livekit.yaml:/livekit.yaml
+    command: --config /livekit.yaml
+    restart: unless-stopped
+
+  # ── Token Service (generate LiveKit tokens) ─────────────────
+  token-service:
+    build:
+      context: ./voice/token-service
+      dockerfile: Dockerfile
+    container_name: shinobicraft-token
+    ports:
+      - "8080:8080"
+    environment:
+      - LIVEKIT_API_KEY=APIKey_ShinobiCraft
+      - LIVEKIT_API_SECRET=Secret_ShinobiCraft_2026
+      - LIVEKIT_HOST=livekit:7880
+    restart: unless-stopped
+    depends_on:
+      - livekit
+
+volumes:
+  worlds:
+  mods:
